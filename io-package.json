@@ -1,0 +1,79 @@
+{
+    "common": {
+        "name": "zisterne",
+        "version": "0.0.1",
+        "news": {
+            "0.0.1": {
+                "en": "initial release",
+                "de": "Erstveröffentlichung",
+                "ru": "Начальная версия",
+                "pt": "lançamento inicial",
+                "nl": "Eerste uitgave",
+                "fr": "Première version",
+                "it": "Versione iniziale",
+                "es": "Versión inicial",
+                "pl": "Pierwsze wydanie",
+                "zh-cn": "首次出版"
+            }
+        },
+        "title": "Zisterne",
+        "titleLang": {
+            "en": "Zisterne",
+            "de": "Zisterne",
+            "ru": "Zisterne",
+            "pt": "Zisterne",
+            "nl": "Zisterne",
+            "fr": "Zisterne",
+            "it": "Zisterne",
+            "es": "Zisterne",
+            "pl": "Zisterne",
+            "zh-cn": "齐斯特恩"
+        },
+        "desc": {
+            "en": "Wasserstandsmessung in Zisterne",
+            "de": "Wasserstandsmessung in Zisterne",
+            "ru": "Wasserstandsmessung в Зистерне",
+            "pt": "Wasserstandsmessung em Zisterne",
+            "nl": "Wasserstandsmessung in Zisterne",
+            "fr": "Wasserstandsmessung in Zisterne",
+            "it": "Wasserstandsmessung in Zisterne",
+            "es": "Wasserstandsmessung en Zisterne",
+            "pl": "Wasserstandsmessung in Zisterne",
+            "zh-cn": "Zisterne的Wasserstandsmessung"
+        },
+        "authors": [
+            "Jochen <jochen@mades.net>"
+        ],
+        "keywords": [
+            "ioBroker",
+            "template",
+            "Smart Home",
+            "home automation"
+        ],
+        "license": "MIT",
+        "platform": "Javascript/Node.js",
+        "main": "build/main.js",
+        "icon": "zisterne.png",
+        "enabled": true,
+        "extIcon": "https://raw.githubusercontent.com/JochenMades/ioBroker.zisterne/master/admin/zisterne.png",
+        "readme": "https://github.com/JochenMades/ioBroker.zisterne/blob/master/README.md",
+        "loglevel": "info",
+        "mode": "daemon",
+        "type": "garden",
+        "compact": true,
+        "connectionType": "local",
+        "dataSource": "push",
+        "materialize": true,
+        "dependencies": [
+            {
+                "js-controller": ">=1.4.2"
+            }
+        ]
+    },
+    "native": {
+        "option1": true,
+        "comPort": "COM6"
+    },
+    "objects": [],
+    "instanceObjects": []
+}
