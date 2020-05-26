@@ -15,9 +15,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 const utils = require("@iobroker/adapter-core");
+// Load your modules here, e.g.:
+// import * as fs from "fs";
+const SerialPort = require("serialport");
 class Zisterne extends utils.Adapter {
     constructor(options = {}) {
         super(Object.assign(Object.assign({}, options), { name: "zisterne" }));
+        this.updateCycle = 0;
+        this.sumDistance = 0;
+        this.sumWaterLevel = 0;
         this.on("ready", this.onReady.bind(this));
         this.on("objectChange", this.onObjectChange.bind(this));
         this.on("stateChange", this.onStateChange.bind(this));
@@ -32,19 +38,46 @@ class Zisterne extends utils.Adapter {
             // Initialize your adapter here
             // The adapters config (in the instance object everything under the attribute "native") is accessible via
             // this.config:
-            this.log.info("config option1: " + this.config.option1);
-            this.log.info("config option2: " + this.config.option2);
+            this.log.info("config ComPort: " + this.config.comPort);
+            this.log.info("config sensorHeight: " + this.config.sensorHeight);
+            this.log.info("config cisternDiameter: " + this.config.cisternDiameter);
+            this.log.info("config updateCycle: " + this.config.updateCycle);
+            this.updateCycle = this.config.updateCycle;
+            const port = new SerialPort(this.config.comPort, {
+                baudRate: 9600,
+                dataBits: 8,
+                stopBits: 1,
+                parity: "none",
+            }, error => {
+                if (error !== null) {
+                    console.error(error);
+                }
+            });
+            const blp = new SerialPort.parsers.ByteLength({ length: 2 });
+            port.pipe(blp);
+            blp.on("data", (x) => this.sniff(x));
             /*
             For every state in the system there has to be also an object of type state
             Here a simple template for a boolean variable named "testVariable"
             Because every adapter instance uses its own unique namespace variable names can't collide with other adapters variables
             */
-            yield this.setObjectAsync("testVariable", {
+            yield this.setObjectAsync("distance", {
                 type: "state",
                 common: {
-                    name: "testVariable",
-                    type: "boolean",
-                    role: "indicator",
+                    name: "distance",
+                    type: "number",
+                    role: "value",
+                    read: true,
+                    write: true,
+                },
+                native: {},
+            });
+            yield this.setObjectAsync("waterLevel", {
+                type: "state",
+                common: {
+                    name: "waterLevel",
+                    type: "number",
+                    role: "value",
                     read: true,
                     write: true,
                 },
@@ -57,19 +90,36 @@ class Zisterne extends utils.Adapter {
             you will notice that each setState will cause the stateChange event to fire (because of above subscribeStates cmd)
             */
             // the variable testVariable is set to true as command (ack=false)
-            yield this.setStateAsync("testVariable", true);
-            // same thing, but the value is flagged "ack"
-            // ack should be always set to true if the value is received from or acknowledged from the target system
-            yield this.setStateAsync("testVariable", { val: true, ack: true });
-            // same thing, but the state is deleted after 30s (getState will return null afterwards)
-            yield this.setStateAsync("testVariable", { val: true, ack: true, expire: 30 });
-            // examples for the checkPassword/checkGroup functions
-            let result = yield this.checkPasswordAsync("admin", "iobroker");
-            this.log.info("check user admin pw iobroker: " + result);
-            result = yield this.checkGroupAsync("admin", "admin");
-            this.log.info("check group user admin group admin: " + result);
+            // await this.setStateAsync("distance", 88);
+            // this.setState()
         });
     }
+    sniff(data) {
+        if (data.length == 2) {
+            const distance = data[0] << 8 | data[1];
+            const waterLevel = this.config.sensorHeight - distance;
+            this.updateCycle--;
+            this.sumDistance += distance;
+            this.sumWaterLevel += waterLevel;
+            if (this.updateCycle == 0) {
+                this.updateCycle = this.config.updateCycle;
+                this.log.info("sensorHeigth = " + this.config.sensorHeight);
+                this.log.info("distance     = " + distance);
+                this.log.info("sumDistance 2   = " + this.sumDistance);
+                this.log.info("sumDistance check  = " + distance * this.config.updateCycle);
+                this.log.info("waterLevel   = " + waterLevel);
+                const meanDistance = this.sumDistance / this.config.updateCycle;
+                const meanWaterLevel = this.sumWaterLevel / this.config.updateCycle;
+                this.sumDistance = 0;
+                this.sumWaterLevel = 0;
+                this.log.info("MEAN distance     = " + meanDistance);
+                this.log.info("MEAN waterLevel   = " + meanWaterLevel);
+                this.setState("distance", Math.round(meanDistance));
+                this.setState("waterLevel", Math.round(meanWaterLevel));
+            }
+        }
+    }
+    ;
     /**
      * Is called when adapter shuts down - callback has to be called under any circumstances!
      */

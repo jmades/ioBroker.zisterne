@@ -30,6 +30,8 @@ class Zisterne extends utils.Adapter {
     private updateCycle = 0;
     private sumDistance = 0;
     private sumWaterLevel = 0;
+    private day = 0;
+    private dayLevel = 0;
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
         super({
@@ -106,6 +108,30 @@ class Zisterne extends utils.Adapter {
             },
             native: {},
         });
+
+        await this.setObjectAsync("timestamp", {
+            type: "state",
+            common: {
+                name: "timestamp",
+                type: "string",
+                role: "value",
+                read: true,
+                write: true,
+            },
+            native: {},
+        });
+
+        await this.setObjectAsync("volume", {
+            type: "state",
+            common: {
+                name: "volume",
+                type: "number",
+                role: "value",
+                read: true,
+                write: true,
+            },
+            native: {},
+        });
         // in this template all states changes inside the adapters namespace are subscribed
         this.subscribeStates("*");
 
@@ -148,8 +174,31 @@ class Zisterne extends utils.Adapter {
                 this.log.info("MEAN distance     = " + meanDistance);
                 this.log.info("MEAN waterLevel   = " + meanWaterLevel);
                 
+                const oldWL = this.getStateAsync("waterLevel");
+
+         /*       if(oldLevel>meanWaterLevel)
+                {
+
+                }
+                else if(oldLevel<meanWaterLevel)
+                {
+
+                }
+                else
+                {
+
+                }
+*/
+
                 this.setState("distance", Math.round(meanDistance));
                 this.setState("waterLevel", Math.round(meanWaterLevel));
+
+                const datum: Date = new Date();
+                this.setState("timestamp", datum.toLocaleString());
+                this.log.info(datum.toLocaleString());
+
+                this.setState("volume", meanWaterLevel*Math.PI*Math.pow(this.config.cisternDiameter/2,2));
+
             }
         }
     };
