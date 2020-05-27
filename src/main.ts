@@ -32,6 +32,9 @@ class Zisterne extends utils.Adapter {
     private sumWaterLevel = 0;
     private day = 0;
     private dayLevel = 0;
+    private hour = 0;
+    private hourLevel = 0;
+    private prevWaterLevel = 0;
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
         super({
@@ -132,8 +135,47 @@ class Zisterne extends utils.Adapter {
             },
             native: {},
         });
+
+        await this.setObjectAsync("diffPerHour", {
+            type: "state",
+            common: {
+                name: "diffPerHour",
+                type: "number",
+                role: "value",
+                read: true,
+                write: true,
+            },
+            native: {},
+        });
+
+        await this.setObjectAsync("diffPerDay", {
+            type: "state",
+            common: {
+                name: "diffPerDay",
+                type: "number",
+                role: "value",
+                read: true,
+                write: true,
+            },
+            native: {},
+        });
+
+        await this.setObjectAsync("status", {
+            type: "state",
+            common: {
+                name: "status",
+                type: "string",
+                role: "value",
+                read: true,
+                write: true,
+            },
+            native: {},
+        });
+
         // in this template all states changes inside the adapters namespace are subscribed
         this.subscribeStates("*");
+
+        // await this.getStateAsync("volume");
 
         /*
         setState examples
@@ -171,34 +213,67 @@ class Zisterne extends utils.Adapter {
                 this.sumDistance = 0;
                 this.sumWaterLevel = 0;
 
+                // Save distance
                 this.log.info("MEAN distance     = " + meanDistance);
+                this.setState("distance", Math.round(meanDistance));
+
+                // Save waterLevel
                 this.log.info("MEAN waterLevel   = " + meanWaterLevel);
+                this.setState("waterLevel", Math.round(meanWaterLevel));
+
+                // Determine status and save
+                this.log.info("PREV waterLevel   = " + this.prevWaterLevel);
                 
-                const oldWL = this.getStateAsync("waterLevel");
-
-         /*       if(oldLevel>meanWaterLevel)
+                if(this.prevWaterLevel>meanWaterLevel)
                 {
-
+                    this.setState("status", "DECREASING");
                 }
-                else if(oldLevel<meanWaterLevel)
+                else if(this.prevWaterLevel<meanWaterLevel)
                 {
 
+                    this.setState("status", "INCREASING");
                 }
                 else
                 {
-
+                    this.setState("status", "STABLE");
                 }
-*/
 
-                this.setState("distance", Math.round(meanDistance));
-                this.setState("waterLevel", Math.round(meanWaterLevel));
+                // Store new pre level
+                this.prevWaterLevel = Math.round(meanWaterLevel);
 
+                // Save the volume in liter
+                this.setState("volume", Math.round(meanWaterLevel*Math.PI*Math.pow(this.config.cisternDiameter/2,2)/1000));
+
+                // Get timestamp
                 const datum: Date = new Date();
                 this.setState("timestamp", datum.toLocaleString());
                 this.log.info(datum.toLocaleString());
 
-                this.setState("volume", meanWaterLevel*Math.PI*Math.pow(this.config.cisternDiameter/2,2));
+                // Calc the leveldifference of the last hour
+                if(datum.getHours()!=this.hour)
+                {
+                    // new hour, if not initialized
+                    if(this.hourLevel!=0)
+                    {
+                        this.setState("diffPerHour", this.hourLevel - Math.round(meanWaterLevel));
+                    }
 
+                    this.hourLevel = Math.round(meanWaterLevel);
+                    this.hour = datum.getHours();
+                }
+
+                // Calc the leveldifference of the last day
+                if(datum.getDay()!=this.day)
+                {
+                    // new hour, if not initialized
+                    if(this.dayLevel!=0)
+                    {
+                        this.setState("diffPerDay", this.dayLevel - Math.round(meanWaterLevel));
+                    }
+
+                    this.dayLevel = Math.round(meanWaterLevel);
+                    this.day = datum.getDay();
+                }
             }
         }
     };

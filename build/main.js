@@ -24,6 +24,11 @@ class Zisterne extends utils.Adapter {
         this.updateCycle = 0;
         this.sumDistance = 0;
         this.sumWaterLevel = 0;
+        this.day = 0;
+        this.dayLevel = 0;
+        this.hour = 0;
+        this.hourLevel = 0;
+        this.prevWaterLevel = 0;
         this.on("ready", this.onReady.bind(this));
         this.on("objectChange", this.onObjectChange.bind(this));
         this.on("stateChange", this.onStateChange.bind(this));
@@ -83,8 +88,64 @@ class Zisterne extends utils.Adapter {
                 },
                 native: {},
             });
+            yield this.setObjectAsync("timestamp", {
+                type: "state",
+                common: {
+                    name: "timestamp",
+                    type: "string",
+                    role: "value",
+                    read: true,
+                    write: true,
+                },
+                native: {},
+            });
+            yield this.setObjectAsync("volume", {
+                type: "state",
+                common: {
+                    name: "volume",
+                    type: "number",
+                    role: "value",
+                    read: true,
+                    write: true,
+                },
+                native: {},
+            });
+            yield this.setObjectAsync("diffPerHour", {
+                type: "state",
+                common: {
+                    name: "diffPerHour",
+                    type: "number",
+                    role: "value",
+                    read: true,
+                    write: true,
+                },
+                native: {},
+            });
+            yield this.setObjectAsync("diffPerDay", {
+                type: "state",
+                common: {
+                    name: "diffPerDay",
+                    type: "number",
+                    role: "value",
+                    read: true,
+                    write: true,
+                },
+                native: {},
+            });
+            yield this.setObjectAsync("status", {
+                type: "state",
+                common: {
+                    name: "status",
+                    type: "string",
+                    role: "value",
+                    read: true,
+                    write: true,
+                },
+                native: {},
+            });
             // in this template all states changes inside the adapters namespace are subscribed
             this.subscribeStates("*");
+            // await this.getStateAsync("volume");
             /*
             setState examples
             you will notice that each setState will cause the stateChange event to fire (because of above subscribeStates cmd)
@@ -112,10 +173,49 @@ class Zisterne extends utils.Adapter {
                 const meanWaterLevel = this.sumWaterLevel / this.config.updateCycle;
                 this.sumDistance = 0;
                 this.sumWaterLevel = 0;
+                // Save distance
                 this.log.info("MEAN distance     = " + meanDistance);
-                this.log.info("MEAN waterLevel   = " + meanWaterLevel);
                 this.setState("distance", Math.round(meanDistance));
+                // Save waterLevel
+                this.log.info("MEAN waterLevel   = " + meanWaterLevel);
                 this.setState("waterLevel", Math.round(meanWaterLevel));
+                // Determine status and save
+                this.log.info("PREV waterLevel   = " + this.prevWaterLevel);
+                if (this.prevWaterLevel > meanWaterLevel) {
+                    this.setState("status", "DECREASING");
+                }
+                else if (this.prevWaterLevel < meanWaterLevel) {
+                    this.setState("status", "INCREASING");
+                }
+                else {
+                    this.setState("status", "STABLE");
+                }
+                // Store new pre level
+                this.prevWaterLevel = Math.round(meanWaterLevel);
+                // Save the volume in liter
+                this.setState("volume", Math.round(meanWaterLevel * Math.PI * Math.pow(this.config.cisternDiameter / 2, 2) / 1000));
+                // Get timestamp
+                const datum = new Date();
+                this.setState("timestamp", datum.toLocaleString());
+                this.log.info(datum.toLocaleString());
+                // Calc the leveldifference of the last hour
+                if (datum.getHours() != this.hour) {
+                    // new hour, if not initialized
+                    if (this.hourLevel != 0) {
+                        this.setState("diffPerHour", this.hourLevel - Math.round(meanWaterLevel));
+                    }
+                    this.hourLevel = Math.round(meanWaterLevel);
+                    this.hour = datum.getHours();
+                }
+                // Calc the leveldifference of the last day
+                if (datum.getDay() != this.day) {
+                    // new hour, if not initialized
+                    if (this.dayLevel != 0) {
+                        this.setState("diffPerDay", this.dayLevel - Math.round(meanWaterLevel));
+                    }
+                    this.dayLevel = Math.round(meanWaterLevel);
+                    this.day = datum.getDay();
+                }
             }
         }
     }
